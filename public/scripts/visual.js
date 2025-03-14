@@ -5,27 +5,45 @@ async function runCppProgram(input) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input }),
     });
-    let result = await response.text();
-    result = result.split(' ').map(Number);
-    
-    let changedResult = [];
-    for (let i = 0; i < epochCNT; ++i) {
-      let population = [];
-      for (let j = 0; j < outputPopulationCNT; ++j) {
-        let individ = [];
-        for (let k = 0; k < pointsCNT; ++k) {
-          individ.push(result[i * outputPopulationCNT * pointsCNT + j * pointsCNT + k]);
-        }
-        population.push(individ);
-      }
-      changedResult.push(population);
-    }
-
-    return changedResult;
+    const result = await response.text();
+    console.log(result);
   } catch (error) {
     console.error('Ошибка:', error);
   }
 }
+
+async function getPopulationsByID(population_id) {
+  try {
+      const response = await fetch(`http://localhost:3000/api/populations/${population_id}`);
+      if (!response.ok) {
+          throw new Error('Ошибка при получении данных');
+      }
+      const data = await response.json();
+      return data;
+  } catch (err) {
+      console.error('Ошибка:', err);
+      return null;
+  }
+}
+
+async function clearDatabase() {
+  try {
+      const response = await fetch('http://localhost:3000/clear-database', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+          throw new Error(`Ошибка HTTP: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Результат очистки базы данных:', result);
+  } catch (error) {
+      console.error('Ошибка при очистке базы данных:', error);
+  }
+}
+
 
 let epochCNT;
 let outputPopulationCNT;
@@ -33,7 +51,7 @@ let pointsCNT;
 let populationCNT;
 
 let points;
-let epochs;
+let population;
 
 let timeoutID;
 let epochIndex = 0;
@@ -45,16 +63,17 @@ async function main() {
   epochCNT = 50;  
   outputPopulationCNT = 1;
   pointsCNT = 10;
-  populationCNT = 20;
+  populationCNT = 10;
 
   points = generatePoints(pointsCNT, 5, 5, 995, 595);
   console.log(generateResponse());
-  epochs = await runCppProgram(generateResponse());
-  console.log(epochs);
 
   visualisePoint();
 
   isStarted = true;
+  clearDatabase();
+  await runCppProgram(generateResponse());
+
   visualiseEpoch();
 }
 
@@ -80,7 +99,7 @@ function generatePoints(num, x1, y1, x2, y2) {
 
 
 function generateResponse() {
-  let response = `${pointsCNT} ${populationCNT} ${epochCNT} ${outputPopulationCNT} `;
+  let response = `${pointsCNT} ${populationCNT} ${epochCNT} `;
   
   points.forEach((value) => {
     response += `${value.x} ${value.y} `;
@@ -104,32 +123,28 @@ async function visualisePoint() {
 
 
 function visualisePath(path, strokeSize) {
-  const svgGraph = document.querySelector('.path-visualisation');
-
   let polygonPath = "";
   for (let i = 0; i < path.length; ++i) {
     const point = points[path[i]];
     polygonPath += `${point.x},${point.y} `;
   }
   
-  svgGraph.innerHTML += `<svg width="1000" height="600">><polygon points="${polygonPath}" fill="none" stroke="pink" stroke-width="${strokeSize}"/></svg>`;
+  return `<svg width="1000" height="600">><polygon points="${polygonPath}" fill="none" stroke="pink" stroke-width="${strokeSize}"/></svg>`;
 }
 
 
-function visualisePopulation() {
+async function visualisePopulation() {
   const svgGraph = document.querySelector('.path-visualisation');
-  svgGraph.innerHTML = '';
 
-  let population = epochs[epochIndex];
+  const population = await getPopulationsByID(epochIndex);
+  let newGraph = "";
   for (let i = 0; i < outputPopulationCNT; ++i) {
-    const path = [];
-    for (let j = 0; j < pointsCNT; ++j) {
-      path.push(Number(population[i][j]));
-    }
-
-    visualisePath(path, (!i) * 1.5 + 1);
+    const path = JSON.parse(population[0]["individual"]);
+    //console.log(path)
+    newGraph += visualisePath(path, (!i) * 1.5 + 1);
   }
   
+  svgGraph.innerHTML = newGraph;
   epochIndex = (epochIndex + 1) % epochCNT;
 
   return (epochIndex == 0) ? 1 : 0;
@@ -138,10 +153,10 @@ function visualisePopulation() {
 
 function visualiseEpoch() {
   visualisePopulation();
-  timeoutID = setTimeout(function visualise() {
-    let wait = visualisePopulation();
+  timeoutID = setTimeout(async function visualise() {
+    let wait = await visualisePopulation();
     console.log(wait);
-    timeoutID = setTimeout(visualise, 50 + 5000 * wait);
+    timeoutID = setTimeout(visualise, 50 + 500 * wait);
   }, 50);
 } 
 

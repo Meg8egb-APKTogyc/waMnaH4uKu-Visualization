@@ -1,11 +1,13 @@
 const  express = require('express');
-const { spawn } = require('child_process')
+const { spawn } = require('child_process');
+const { getPopulationsByID, clearDatabase } = require('./database');
 const path = require('path');
 const app = express();
 const port = 3000;
 
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
 
 app.post('/run-cpp', express.json(), (req, res) => {
@@ -31,6 +33,33 @@ app.post('/run-cpp', express.json(), (req, res) => {
   });
 });
 
+
+app.get('/api/populations/:population_id', (req, res) => {
+  const population_id = req.params.population_id;
+  //console.log(`Запрос данных для population_id = ${population_id}`);
+
+  getPopulationsByID(population_id, (err, data) => {
+      if (err) {
+          console.error('Ошибка при получении данных:', err);
+          res.status(500).json({ error: 'Ошибка при получении данных' });
+      } else {
+          res.json(data);
+      }
+  });
+});
+
+
+app.post('/clear-database', (req, res) => {
+  clearDatabase((err) => {
+      if (err) {
+          console.error('Ошибка при очистке базы данных:', err);
+          res.status(500).json({ error: 'Ошибка при очистке базы данных' });
+      } else {
+          console.log('База данных успешно очищена.');
+          res.json({ message: 'База данных успешно очищена.' });
+      }
+  });
+});
 
 
 app.listen(port, () => {
