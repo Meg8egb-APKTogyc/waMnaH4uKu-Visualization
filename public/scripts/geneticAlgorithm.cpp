@@ -6,9 +6,14 @@
 #include <numeric>
 #include <algorithm>
 #include <cmath>
+#include <nlohmann/json.hpp> // apt install nlohmann-json3-dev
 
 
 using namespace std;
+using json = nlohmann::json;
+
+
+const string PATH = "~/IT/Project/GeneticAlg/public/scripts/interactDB.py";
 
 
 mt19937 rnd(179);
@@ -87,12 +92,24 @@ vector<int> createChild(const vector<int>& dad, const vector<int>& mom, int copy
 }
 
 
+void reverseGen(vector<int>& individ, int ind, int length) {
+  for (int i = 0; i < length / 2; ++i) {
+    swap(individ[ind + i], individ[i + length - 1 - i]);
+  }
+}
+
+
 void swapGenPart(vector<int>& individ, int i1, int i2, int length) {
   int n = individ.size();
 
   for (int i = 0; i < length; ++i) {
     swap(individ[i1 + i], individ[i2 + i]);
   }
+
+  if (rnd() % 100 < 20)
+    reverseGen(individ, i1, length);
+  if (rnd() % 100 < 20)
+    reverseGen(individ, i2, length);
 }
 
 
@@ -105,8 +122,13 @@ vector<int> mutate(vector<int> individual, int gens) {
     if (i1 == i2)
       continue;
     
-    int len = randomVal(0, min(min(min(n - i1, n - i2), abs(i1 - i2)), 3));
-    swapGenPart(individual, i1, i2, len);
+    int lenght = randomVal(0, min(min(min(n - i1, n - i2), abs(i1 - i2)), 3));
+    swapGenPart(individual, i1, i2, lenght);
+
+    if (rnd() % 100 < 20)
+      reverseGen(individual, i1, lenght);
+    if (rnd() % 100 < 20)
+      reverseGen(individual, i2, lenght);
   }
 
   return individual;
@@ -129,21 +151,11 @@ void mutation(vector<vector<int>>& population, int mutationCNT) {
   int n = (int)population.size();
   
   for (int i = 0; i < mutationCNT; ++i) {
-    if (rnd() % 10 > 4)
+    if (rnd() % 10 < 4)
       population.push_back(mutate(population[randomVal(0, n)], randomVal(0, 4)));
     else
       population.push_back(mutateSimple(population[randomVal(0, n)], randomVal(1, 3)));
   }
-}
-
-void crossBreeding(vector<vector<int>>& population, int pairsCNT) {
-  int n = population.size();
-
-  for (int i = 0; i < pairsCNT; ++i) {
-    population.push_back(createChild(population[randomVal(0, n)], population[randomVal(0, n)], randomVal(1, 3), 4));
-  }
-
-  return;  
 }
 
 
@@ -173,6 +185,33 @@ bool compareByDistanse(const vector<int>& a, const vector<int>& b) {
 }
 
 
+int battleRoyal(const vector<vector<int>>& population) {
+  int n = population.size();
+  int goodParent = randomVal(0, n);
+
+  for (int i = 0; i < 5; ++i) {
+    int newParent = randomVal(0, n);
+    if (compareByDistanse(population[newParent], population[goodParent])) {
+      goodParent = newParent;
+    }
+  }
+
+  return goodParent;
+}
+
+
+void crossBreeding(vector<vector<int>>& population, int pairsCNT) {
+  int n = population.size();
+
+  for (int i = 0; i < pairsCNT; ++i) {
+    int stepFather = battleRoyal(population);
+    int stepDaughter = battleRoyal(population);
+    population.push_back(createChild(population[stepFather], population[stepDaughter], randomVal(1, 3), 4));
+  }
+
+  return;  
+}
+
 void killNoobs(vector<vector<int>>& populataion, int populationCNT, int savePros) {
   sort(populataion.begin(), populataion.end(), compareByDistanse);
   
@@ -186,21 +225,28 @@ void killNoobs(vector<vector<int>>& populataion, int populationCNT, int savePros
   }
 }
 
+void addToBase(const vector<vector<int>>& population) {
+  json j = population;
 
-void printPro(vector<vector<int>>& population, int outputCNT) {
-  sort(population.begin(), population.end(), compareByDistanse);
+  string jsonData = j.dump();
 
-  for (int i = 0; i < outputCNT; ++i) {
-    for (int j = 0; j < population[i].size(); ++j) {
-      cout << population[i][j] << ' ';
-    }
+  string command = "python3" + PATH;
+
+  FILE* pipe = popen(command.c_str(), "w");
+  fprintf(pipe, "%s", jsonData.c_str());
+  int result = pclose(pipe);
+
+  if (result == 0) {
+    cout << "Данные успешно добавлены в базу данных." << endl;
+  } else {
+    cout << "Ошибка при выполнении Python-скрипта. " << result << endl;
   }
 }
 
 
 int main() {
-  int pointsCNT, populationCNT, epochsCNT, outputCNT;
-  cin >> pointsCNT >> populationCNT >> epochsCNT >> outputCNT;
+  int pointsCNT, populationCNT, epochsCNT;
+  cin >> pointsCNT >> populationCNT >> epochsCNT;
   
   for (int i = 0; i < pointsCNT; ++i) {
     int x, y;
@@ -219,7 +265,7 @@ int main() {
 
     killNoobs(population, populationCNT, randomVal(2, 5));
 
-    printPro(population, outputCNT);
+    addToBase(population);
   }
 
   return 0;
