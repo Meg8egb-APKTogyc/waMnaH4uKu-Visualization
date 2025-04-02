@@ -6,17 +6,16 @@
 #include <numeric>
 #include <algorithm>
 #include <cmath>
-#include <nlohmann/json.hpp> // apt install nlohmann-json3-dev
-
+#include <fstream>
+#include <chrono>
 
 using namespace std;
-using json = nlohmann::json;
-
-
-const string PATH = "~/IT/Project/GeneticAlg/public/scripts/interactDB.py";
 
 
 mt19937 rnd(179);
+
+
+ofstream outFile("epochs.txt");
 
 
 struct POINT{
@@ -225,28 +224,30 @@ void killNoobs(vector<vector<int>>& populataion, int populationCNT, int savePros
   }
 }
 
-void addToBase(const vector<vector<int>>& population) {
-  json j = population;
-
-  string jsonData = j.dump();
-
-  string command = "python3" + PATH;
-
-  FILE* pipe = popen(command.c_str(), "w");
-  fprintf(pipe, "%s", jsonData.c_str());
-  int result = pclose(pipe);
-
-  if (result == 0) {
-    cout << "Данные успешно добавлены в базу данных." << endl;
-  } else {
-    cout << "Ошибка при выполнении Python-скрипта. " << result << endl;
+void printPopulation(vector<vector<int>>& population, int outputCNT) {
+  sort(population.begin(), population.end(), compareByDistanse);
+  outFile << "[ ";
+  for (int i = 0; i < outputCNT; ++i) {
+    outFile << "[ ";
+    for (int j = 0; j < population[i].size(); ++j) {
+      outFile << population[i][j];
+      if (j < population[i].size() - 1)
+        outFile << ", ";
+    }
+    outFile << " ]";
+    if (i < outputCNT - 1) {
+      outFile << ", ";
+    }
   }
+  outFile << " ]" << endl;
 }
 
 
 int main() {
-  int pointsCNT, populationCNT, epochsCNT;
-  cin >> pointsCNT >> populationCNT >> epochsCNT;
+  auto start = std::chrono::high_resolution_clock::now();
+
+  int pointsCNT, populationCNT, epochsCNT, outputCNT;
+  cin >> pointsCNT >> populationCNT >> epochsCNT >> outputCNT;
   
   for (int i = 0; i < pointsCNT; ++i) {
     int x, y;
@@ -265,8 +266,15 @@ int main() {
 
     killNoobs(population, populationCNT, randomVal(2, 5));
 
-    addToBase(population);
+    printPopulation(population, outputCNT);
   }
+
+  outFile.close();
+
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+  cout << duration_ms.count() << endl;
 
   return 0;
 }

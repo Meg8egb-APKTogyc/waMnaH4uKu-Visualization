@@ -4,10 +4,14 @@
     <title>Genetic Algorithm</title>
   </head>
   <body>
-    <svg class="visualisation" width="995" height="600">
-      <g class="points-visualisation"></g>
+    <svg class="visualization" width="1300" height="600">
+      <g class="points-visualization"></g>
 
-      <g class="path-visualisation"></g>
+      <g class="path-visualization"></g>
+
+      <g class="top-visualization"></g>
+
+      <g class="info-visualization"></g>
     </svg>
 
     <div class="mainButton">
@@ -18,10 +22,12 @@
       <button class="newPointsButton" onclick="processNewPointsButton()">Change Points</button>
     </div>
 
-    <div class="modifyGen">
-      
+    <div class="modifiers">
     </div>
-    <script src="/scripts/visual.js">
-    </script>
+
+    <button class="vizualizeButton" onclick="processVisualizeButton()">Visualize</button>
+    <script src="scripts/colors.js"></script>
+    <script src="/scripts/visual.js"></script>
+    <script src="/scripts/processButton.js"></script>
   </body>
 </html>

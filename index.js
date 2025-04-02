@@ -1,7 +1,7 @@
 const  express = require('express');
 const { spawn } = require('child_process');
-const { getPopulationsByID, clearDatabase } = require('./database');
 const path = require('path');
+const { getPopulationByIndex } = require('./getPopulation');
 const app = express();
 const port = 3000;
 
@@ -33,34 +33,19 @@ app.post('/run-cpp', express.json(), (req, res) => {
   });
 });
 
+app.get('/api/epochs/:index', (req, res) => {
+  const index = parseInt(req.params.index, 10);
+  const filename = path.join(__dirname, 'epochs.txt');
 
-app.get('/api/populations/:population_id', (req, res) => {
-  const population_id = req.params.population_id;
-  //console.log(`Запрос данных для population_id = ${population_id}`);
+  getPopulationByIndex(filename, index, (err, population) => {
+    if (err) {
+      console.error('Ошибка при получении популяций:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
 
-  getPopulationsByID(population_id, (err, data) => {
-      if (err) {
-          console.error('Ошибка при получении данных:', err);
-          res.status(500).json({ error: 'Ошибка при получении данных' });
-      } else {
-          res.json(data);
-      }
+    return res.json({ population });
   });
 });
-
-
-app.post('/clear-database', (req, res) => {
-  clearDatabase((err) => {
-      if (err) {
-          console.error('Ошибка при очистке базы данных:', err);
-          res.status(500).json({ error: 'Ошибка при очистке базы данных' });
-      } else {
-          console.log('База данных успешно очищена.');
-          res.json({ message: 'База данных успешно очищена.' });
-      }
-  });
-});
-
 
 app.listen(port, () => {
   console.log(`Сервер запущен на http://localhost:${port}`);
