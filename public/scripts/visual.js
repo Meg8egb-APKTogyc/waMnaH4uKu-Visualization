@@ -6,75 +6,112 @@ async function runCppProgram(input) {
       body: JSON.stringify({ input }),
     });
     const result = await response.text();
-    console.log(result);
+    visualizeExecutionTime(result);
   } catch (error) {
     console.error('Ошибка:', error);
   }
 }
 
-async function getPopulationsByID(population_id) {
-  try {
-      const response = await fetch(`http://localhost:3000/api/populations/${population_id}`);
-      if (!response.ok) {
-          throw new Error('Ошибка при получении данных');
-      }
-      const data = await response.json();
-      return data;
-  } catch (err) {
-      console.error('Ошибка:', err);
-      return null;
-  }
-}
 
-async function clearDatabase() {
-  try {
-      const response = await fetch('http://localhost:3000/clear-database', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-      });
+function fetchPopulationCyclically(interval_ = 1000) {
+  let timeoutID;
 
-      if (!response.ok) {
+  function fetchNextPopulation() {
+    fetch(`http://localhost:3000/api/epochs/${epochIndex}`)
+      .then(response => {
+        if (!response.ok) {
           throw new Error(`Ошибка HTTP: ${response.status}`);
-      }
+        }
 
-      const result = await response.json();
-      console.log('Результат очистки базы данных:', result);
-  } catch (error) {
-      console.error('Ошибка при очистке базы данных:', error);
+        return response.json();
+      })
+      .then(data => {
+        const populations = data.population;
+
+        // console.log('Получены популяции:', populations);
+        visualizeEpoch(populations);
+
+        timeoutID = setTimeout(fetchNextPopulation, interval_ + 4000 * (epochIndex + 1 === config.epochsCNT));
+        epochIndex = (epochIndex + 1) % config.epochsCNT;
+      })
+      .catch(error => {
+        console.error('Ошибка при получении популяции:', error);
+
+        epochIndex = -1;
+        timeoutID = setTimeout(fetchNextPopulation, interval_);
+      });
   }
+
+  fetchNextPopulation();
+
+  function stopFetching_() {
+    if (timeoutID) {
+      clearTimeout(timeoutID);
+    }
+  }
+
+  return stopFetching_;
 }
 
+function fetchPopulation() {
+  fetch(`http://localhost:3000/api/epochs/${epochIndex}`)
+   .then(response => {
+      if (!response.ok) {
+        throw new Error(`Ошибка HTTP: ${response.status}`);
+      }
 
-let epochCNT;
-let outputPopulationCNT;
-let pointsCNT;
-let populationCNT;
+      return response.json();
+    })
+   .then(data => {
+      const populations = data.population;
+
+      // console.log('Получены популяции:', populations);
+      visualizeEpoch(populations);
+
+      epochIndex = (epochIndex + 1) % config.epochsCNT;
+    })
+   .catch(error => {
+      console.error('Ошибка при получении популяции:', error);
+
+      epochIndex = -1;
+    });
+}
+
+let config = {
+  pointsCNT: 10,
+  populationsCNT: 10,
+  epochsCNT: 50,
+  outputCNT: 4,
+}
 
 let points;
-let population;
-
-let timeoutID;
-let epochIndex = 0;
 
 let isStarted;
+let stopFetching;
+
+let epochIndex;
+
+let mainEpoch;
+
+let executionTime;
+
+const interval = 150;
 
 
-async function main() {
-  epochCNT = 50;  
-  outputPopulationCNT = 1;
-  pointsCNT = 10;
-  populationCNT = 10;
-
-  points = generatePoints(pointsCNT, 5, 5, 995, 595);
+async function beginVisualization() {
+  points = generatePoints(config.pointsCNT, 5, 5, 1000, 595);
   console.log(generateResponse());
 
-  visualisePoint();
+  mainEpoch = -1;
+  epochIndex = 0;
 
-  isStarted = true;
-  clearDatabase();
+  visualizePoint();
+  visualizeTopPopulations();
+
   await runCppProgram(generateResponse());
 
-  visualiseEpoch();
+  isStarted = true;
+  stopFetching = fetchPopulationCyclically(interval);
 }
 
 
@@ -99,7 +136,10 @@ function generatePoints(num, x1, y1, x2, y2) {
 
 
 function generateResponse() {
-  let response = `${pointsCNT} ${populationCNT} ${epochCNT} `;
+  let response = '';
+  for (let key in config) {
+    response += `${config[key]} `;
+  }
   
   points.forEach((value) => {
     response += `${value.x} ${value.y} `;
@@ -109,8 +149,8 @@ function generateResponse() {
 }
 
 
-async function visualisePoint() {
-  const svgGraph = document.querySelector('.points-visualisation');
+function visualizePoint() {
+  const svgGraph = document.querySelector('.points-visualization');
 
   let newInner = "";
   for (let i = 0; i < points.length; ++i) {
@@ -121,100 +161,82 @@ async function visualisePoint() {
   svgGraph.innerHTML = newInner;
 }
 
+function visualizeTopPopulations() {
+  const svgGraph = document.querySelector('.top-visualization');
+  svgGraph.insertAdjacentHTML('beforebegin', `<text x="1250" y="20" fill="grey">Top</text>`);
+  for (let i = 0; i < config.outputCNT; ++i) {
+    const add = `<line x1="1232.5" y1="${40 + i * 20}" x2="1292.5" y2="${40 + i * 20}" stroke="${popularColors[i]}", stroke-width="${4 + (!i)}"/>`;
+    console.log(add);
+    svgGraph.insertAdjacentHTML('beforeend', add);
+  }
 
-function visualisePath(path, strokeSize) {
+  Array.from(svgGraph.children).forEach((child, index) => {
+    child.addEventListener('mouseenter', () => {
+      mainEpoch = index;
+      console.log(index);
+      if (isStarted) {
+        epochIndex = (epochIndex + config.epochsCNT - 1) % config.epochsCNT;
+        fetchPopulation();
+      }
+    });
+    
+    child.addEventListener('mouseleave', () => {
+      mainEpoch = -1;
+      if (isStarted) {
+        epochIndex = (epochIndex + config.epochsCNT - 1) % config.epochsCNT;
+        fetchPopulation();
+      }
+    });
+  })
+}
+
+
+function visualizePath(path, index, color) {
   let polygonPath = "";
+  const strokeSize = (index === 0 && (mainEpoch === -1 || mainEpoch === 0)) ? 2 : 1.5;
+
   for (let i = 0; i < path.length; ++i) {
     const point = points[path[i]];
     polygonPath += `${point.x},${point.y} `;
   }
   
-  return `<svg width="1000" height="600">><polygon points="${polygonPath}" fill="none" stroke="pink" stroke-width="${strokeSize}"/></svg>`;
+  return `<polygon points="${polygonPath}" fill="none" stroke="${color}" stroke-width="${strokeSize}">`;
 }
 
 
-async function visualisePopulation() {
-  const svgGraph = document.querySelector('.path-visualisation');
+function visualizeEpoch(population) {
+  const svgGraph = document.querySelector('.path-visualization');
+  svgGraph.innerHTML = "";
 
-  const population = await getPopulationsByID(epochIndex);
-  let newGraph = "";
-  for (let i = 0; i < outputPopulationCNT; ++i) {
-    const path = JSON.parse(population[0]["individual"]);
-    //console.log(path)
-    newGraph += visualisePath(path, (!i) * 1.5 + 1);
+  for (let i = 0; i < population.length; ++i) {
+    if (mainEpoch == -1) {
+      svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[i], i, popularColors[i]));
+    } else if (mainEpoch != i) {
+      svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[i], i, "grey"));
+    }
   }
-  
-  svgGraph.innerHTML = newGraph;
-  epochIndex = (epochIndex + 1) % epochCNT;
 
-  return (epochIndex == 0) ? 1 : 0;
-}
-
-
-function visualiseEpoch() {
-  visualisePopulation();
-  timeoutID = setTimeout(async function visualise() {
-    let wait = await visualisePopulation();
-    console.log(wait);
-    timeoutID = setTimeout(visualise, 50 + 500 * wait);
-  }, 50);
-} 
-
-
-function processPauseButton() {
-  const pauseButton = document.querySelector('.pauseButton');
-
-  if (!isStarted) {
-    pauseButton.innerHTML = "Pause";
-    return;
+  if (mainEpoch != -1) {
+    svgGraph.insertAdjacentHTML('beforeend', visualizePath(population[mainEpoch], mainEpoch, popularColors[mainEpoch]));
   }
-  
-  console.log(pauseButton.innerHTML);
-  if (pauseButton.innerHTML === "Pause") {
-    clearTimeout(timeoutID);
-    pauseButton.innerHTML = "Resume";
-  } else {
-    visualiseEpoch();
-    pauseButton.innerHTML = "Pause";
-  }
+
+  const info = document.querySelector('.info-visualization').querySelector('.changable');
+  const epochIndexVisual = `<text x="1275" y="560" fill="grey" class="changable" text-anchor="end">Epoch: ${epochIndex + 1}</text>`;
+
+  if (info)
+    info.innerHTML = `Epoch: ${epochIndex + 1}`;
+  else
+    document.querySelector('.info-visualization').insertAdjacentHTML('beforeend', epochIndexVisual);
+
+  return;
 }
 
 
-function processClearButton() {
-  clearTimeout(timeoutID);
+function visualizeExecutionTime(time) {
+  const svgGraph = document.querySelector('.info-visualization');
 
-  const svgGraph = document.querySelector('.path-visualisation');
-  svgGraph.innerHTML = '';
-
-  epochIndex = 0;
-  isStarted = 0;
-
-  processPauseButton();
+  svgGraph.innerHTML = `<text x="1275" y="580" fill="grey" text-anchor="end">Executed in: ${time} ms</text>`;
 }
 
 
-async function processStartButton() {
-  clearTimeout(timeoutID);
-
-  epochIndex = 0;
-  isStarted = 1;
-
-  document.querySelector('.pauseButton').innerHTML = 'Pause';
-  
-  if (!epochs)
-    epochs = await runCppProgram(generateResponse());
-  visualiseEpoch();
-}
-
-
-function processNewPointsButton() {
-  processClearButton();
-  
-  points = generatePoints(pointsCNT, 5, 5, 995, 595);
-  visualisePoint();
-
-  epochs = null;
-}
-
-
-main();
+beginVisualization();
