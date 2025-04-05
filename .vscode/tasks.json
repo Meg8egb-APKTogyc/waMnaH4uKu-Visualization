@@ -9,7 +9,16 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "${fileDirname}/${fileBasenameNoExtension}",
+                "-DLOCAL",
+                "-std=c++23",
+                "-D_GLIBCXX_DEBUG",
+                "-g",
+                "-g3",
+                "-O3",
+                "-Wall",
+                "-Wextra",
+                "-Wshadow",
             ],
             "options": {
                 "cwd": "${fileDirname}"
