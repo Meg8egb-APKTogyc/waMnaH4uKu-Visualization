@@ -47,7 +47,7 @@ async function processStartButton() {
 function processNewPointsButton() {
   processClearButton();
   
-  points = generatePoints(config.pointsCNT, 5, 5, 995, 595);
+  points = generatePoints(config['points']['value'], 5, 5, 995, 595);
   visualizePoint();
 
   epochs = null;
@@ -56,32 +56,41 @@ function processNewPointsButton() {
   
 async function processVisualizeButton() {
   document.querySelectorAll('.input-modifiers').forEach((value) => {
-    console.log(value.className);
-    config[value.className.split(' ')[1].split('input-')[1] + "CNT"] = parseInt(value.value, 10);
+    config[value.name.split('modifier-')[1]]['value'] = parseInt(value.value, 10);
   });
+  config['output']['max'] = Math.min(config['populations']['value'], config['populations']['max']);
 
-  if (config.points != prevPoints) {
+  if (config['points']['value'] != prevPoints) {
     document.querySelector('.points-visualization').innerHTML = '';
-    points = generatePoints(config.pointsCNT, 5, 5, 995, 595);
+    points = generatePoints(config['points']['value'], 5, 5, 995, 595);
     visualizePoint();
   }
   
   processClearButton();
+  console.log(generateResponse());
   await runCppProgram(generateResponse());
+  visualizeTopPopulations();
   stopFetching = fetchPopulationCyclically(interval);
   isStarted = true;
+  prevPoints = config['points']['value'];
 }
 
 
-let prevPoints = config.pointsCNT;
+let prevPoints = config['points']['value'];
 
 const modifier = document.querySelector('.modifiers');
-[ 'Points', 'Populations', 'Epochs', 'Output Epoch' ].forEach((value) => {
-  const changedVal = value.toLowerCase().split(' ')[0];
+for (let key in config) {
   modifier.insertAdjacentHTML('beforeend', `
-  <p>
-    ${value}:
-    <input class="input-modifiers input-${changedVal}" type="range" min="1" max="100" step="1" value="${config[changedVal + "CNT"]}">
-  </p>
-  `);
-})
+    <p>
+      ${config[key]['name']}:
+      <input 
+        class="input-modifiers" 
+        name="modifier-${key}"
+        type="range" 
+        min="${config[key]['min']}" 
+        max="${config[key]['max']}" 
+        step="1" 
+        value="${config[key]['value']}">
+    </p>
+    `);
+}

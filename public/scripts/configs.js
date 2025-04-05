@@ -1,4 +1,50 @@
-let popularColors = [
+const config = {
+  points: {
+    value: 10,
+    min: 1,
+    max: 100,
+    name: 'Points',
+  },
+  populations: {
+    value: 10,
+    min: 1,
+    max: 1000,
+    name: 'Populations',
+  },
+  epochs: {
+    value: 50,
+    min: 1,
+    max: 1000,
+    name: 'Epochs',
+  },
+  output: {
+    value: 4,
+    min: 1,
+    max: 10,
+    name: 'Output populations',
+  }, 
+  children: {
+    value: 10,
+    min: 1,
+    max: 1000,
+    name: 'Children per generation',
+  }, 
+  mutation: {
+    value: 10,
+    min: 1,
+    max: 1000,
+    name: 'Mutation per generation',
+  },
+  elite: {
+    value: 2,
+    min: 1,
+    max: 1000,
+    name: 'Elite individuals',
+  }
+};
+
+
+const popularColors = [
   //"red",          // Красный для правильного результата
   "green",        // Зеленый
   "blue",         // Синий
@@ -65,7 +111,7 @@ let popularColors = [
   "wheat",        // Пшеничный
 ];
 
-
+/*
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
     // Генерируем случайный индекс от 0 до i
@@ -77,3 +123,4 @@ function shuffleArray(array) {
 }
 
 popularColors = shuffleArray(popularColors);
+*/

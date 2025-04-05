@@ -31,13 +31,13 @@ function fetchPopulationCyclically(interval_ = 1000) {
         // console.log('Получены популяции:', populations);
         visualizeEpoch(populations);
 
-        timeoutID = setTimeout(fetchNextPopulation, interval_ + 4000 * (epochIndex + 1 === config.epochsCNT));
-        epochIndex = (epochIndex + 1) % config.epochsCNT;
+        timeoutID = setTimeout(fetchNextPopulation, interval_ + 4000 * (epochIndex + 1 === config.epochs.value));
+        epochIndex = (epochIndex + 1) % config.epochs.value;
       })
       .catch(error => {
         console.error('Ошибка при получении популяции:', error);
 
-        epochIndex = -1;
+        epochIndex = 0;
         timeoutID = setTimeout(fetchNextPopulation, interval_);
       });
   }
@@ -65,23 +65,15 @@ function fetchPopulation() {
    .then(data => {
       const populations = data.population;
 
-      // console.log('Получены популяции:', populations);
       visualizeEpoch(populations);
 
-      epochIndex = (epochIndex + 1) % config.epochsCNT;
+      epochIndex = (epochIndex + 1) % config.epochs.value;
     })
    .catch(error => {
       console.error('Ошибка при получении популяции:', error);
 
-      epochIndex = -1;
+      epochIndex = 0;
     });
-}
-
-let config = {
-  pointsCNT: 10,
-  populationsCNT: 10,
-  epochsCNT: 50,
-  outputCNT: 4,
 }
 
 let points;
@@ -93,13 +85,11 @@ let epochIndex;
 
 let mainEpoch;
 
-let executionTime;
-
 const interval = 150;
 
 
 async function beginVisualization() {
-  points = generatePoints(config.pointsCNT, 5, 5, 1000, 595);
+  points = generatePoints(config.points.value, 5, 5, 1000, 595);
   console.log(generateResponse());
 
   mainEpoch = -1;
@@ -138,8 +128,10 @@ function generatePoints(num, x1, y1, x2, y2) {
 function generateResponse() {
   let response = '';
   for (let key in config) {
-    response += `${config[key]} `;
+    response += `${config[key]['value']} `;
   }
+
+  response += '\n';
   
   points.forEach((value) => {
     response += `${value.x} ${value.y} `;
@@ -163,19 +155,21 @@ function visualizePoint() {
 
 function visualizeTopPopulations() {
   const svgGraph = document.querySelector('.top-visualization');
+  svgGraph.innerHTML = '';
   svgGraph.insertAdjacentHTML('beforebegin', `<text x="1250" y="20" fill="grey">Top</text>`);
-  for (let i = 0; i < config.outputCNT; ++i) {
+  for (let i = 0; i < config.output.value; ++i) {
     const add = `<line x1="1232.5" y1="${40 + i * 20}" x2="1292.5" y2="${40 + i * 20}" stroke="${popularColors[i]}", stroke-width="${4 + (!i)}"/>`;
     console.log(add);
     svgGraph.insertAdjacentHTML('beforeend', add);
   }
 
   Array.from(svgGraph.children).forEach((child, index) => {
+    console.log(index);
     child.addEventListener('mouseenter', () => {
       mainEpoch = index;
       console.log(index);
       if (isStarted) {
-        epochIndex = (epochIndex + config.epochsCNT - 1) % config.epochsCNT;
+        epochIndex = (epochIndex + config['epochs']['value'] - 1) % config['epochs']['value'];
         fetchPopulation();
       }
     });
@@ -183,7 +177,7 @@ function visualizeTopPopulations() {
     child.addEventListener('mouseleave', () => {
       mainEpoch = -1;
       if (isStarted) {
-        epochIndex = (epochIndex + config.epochsCNT - 1) % config.epochsCNT;
+        epochIndex = (epochIndex + config['epochs']['value'] - 1) % config['epochs']['value'];
         fetchPopulation();
       }
     });
@@ -208,11 +202,9 @@ function visualizeEpoch(population) {
   const svgGraph = document.querySelector('.path-visualization');
   svgGraph.innerHTML = "";
 
-  for (let i = 0; i < population.length; ++i) {
-    if (mainEpoch == -1) {
+  if (mainEpoch === -1) {
+    for (let i = 0; i < population.length; ++i) {
       svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[i], i, popularColors[i]));
-    } else if (mainEpoch != i) {
-      svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[i], i, "grey"));
     }
   }
 
