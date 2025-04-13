@@ -1,17 +1,40 @@
 async function runCppProgram(input) {
   try {
-    const response = await fetch(`http://localhost:3000/run-cpp`, {
+    const response = await fetch(`http://localhost:3000/run-cpp-geneticAlgorithm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input }),
     });
     const result = await response.text();
-    visualizeExecutionTime(result);
+    const info = { 
+      path: JSON.parse(result.split('\n')[0]), 
+      distance: result.split('\n')[1],
+      time: result.split('\n')[2]
+    };
+    return info;
   } catch (error) {
     console.error('Ошибка:', error);
   }
 }
 
+async function runCppProgramCorrect(input) {
+  try {
+    const response = await fetch(`http://localhost:3000/run-cpp-correct`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input }),
+    });
+    const result = await response.text();
+    const info = {
+      path: JSON.parse(result.split('\n')[0]), 
+      distance: result.split('\n')[1],
+      time: result.split('\n')[2]
+    };
+    return info;
+  } catch (error) {
+    console.error('Ошибка:', error);
+  }
+}
 
 function fetchPopulationCyclically(interval_ = 1000) {
   let timeoutID;
@@ -98,12 +121,17 @@ async function beginVisualization() {
   visualizePoint();
   visualizeTopPopulations();
 
-  await runCppProgram(generateResponse());
+  const [result1, result2] = await Promise.all([
+    runCppProgramCorrect(generateResponseCorrect()),
+    runCppProgram(generateResponse())
+  ]);
+
+  visulalizeResults(result1, result2);
+  visualizeInfo(result1, result2);
 
   isStarted = true;
   stopFetching = fetchPopulationCyclically(interval);
 }
-
 
 function randomInteger(min, max) {
   let rand = min + Math.random() * (max + 1 - min);
@@ -140,6 +168,18 @@ function generateResponse() {
   return response;
 }
 
+function generateResponseCorrect() {
+  let response = `${config['points']['value']}`
+
+  response += '\n';
+  
+  points.forEach((value) => {
+    response += `${value.x} ${value.y} `;
+  });
+
+  return response;
+}
+
 
 function visualizePoint() {
   const svgGraph = document.querySelector('.points-visualization');
@@ -154,20 +194,17 @@ function visualizePoint() {
 }
 
 function visualizeTopPopulations() {
-  const svgGraph = document.querySelector('.top-visualization');
+  const svgGraph = document.querySelector('.path-visualization-selector');
   svgGraph.innerHTML = '';
-  svgGraph.insertAdjacentHTML('beforebegin', `<text x="1250" y="20" fill="grey">Top</text>`);
+
   for (let i = 0; i < config.output.value; ++i) {
-    const add = `<line x1="1232.5" y1="${40 + i * 20}" x2="1292.5" y2="${40 + i * 20}" stroke="${popularColors[i]}", stroke-width="${4 + (!i)}"/>`;
-    console.log(add);
+    const add = `<line x1="1215" y1="${160 + i * 20}" x2="1275" y2="${160 + i * 20}" stroke="${popularColors[i]}", stroke-width="${6 + (!i) * 2}"/>`;
     svgGraph.insertAdjacentHTML('beforeend', add);
   }
 
   Array.from(svgGraph.children).forEach((child, index) => {
-    console.log(index);
     child.addEventListener('mouseenter', () => {
       mainEpoch = index;
-      console.log(index);
       if (isStarted) {
         epochIndex = (epochIndex + config['epochs']['value'] - 1) % config['epochs']['value'];
         fetchPopulation();
@@ -181,20 +218,21 @@ function visualizeTopPopulations() {
         fetchPopulation();
       }
     });
-  })
+  });
+
+  svgGraph.insertAdjacentHTML('afterbegin', `<text x="1275" y="140" fill="grey" text-anchor="end">Epoch top populations:</text>`);
 }
 
 
-function visualizePath(path, index, color) {
+function visualizePath(path, color, strokeSize) {
   let polygonPath = "";
-  const strokeSize = (index === 0 && (mainEpoch === -1 || mainEpoch === 0)) ? 2 : 1.5;
 
   for (let i = 0; i < path.length; ++i) {
     const point = points[path[i]];
     polygonPath += `${point.x},${point.y} `;
   }
   
-  return `<polygon points="${polygonPath}" fill="none" stroke="${color}" stroke-width="${strokeSize}">`;
+  return `<polygon points="${polygonPath}" fill="none" stroke="${color}" stroke-width="${strokeSize}"/>`;
 }
 
 
@@ -204,12 +242,10 @@ function visualizeEpoch(population) {
 
   if (mainEpoch === -1) {
     for (let i = 0; i < population.length; ++i) {
-      svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[i], i, popularColors[i]));
+      svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[i], popularColors[i], 1.5 + (i === 0)));
     }
-  }
-
-  if (mainEpoch != -1) {
-    svgGraph.insertAdjacentHTML('beforeend', visualizePath(population[mainEpoch], mainEpoch, popularColors[mainEpoch]));
+  } else {
+    svgGraph.insertAdjacentHTML('beforeend', visualizePath(population[mainEpoch], popularColors[mainEpoch], 2));
   }
 
   const info = document.querySelector('.info-visualization').querySelector('.changable');
@@ -224,11 +260,38 @@ function visualizeEpoch(population) {
 }
 
 
-function visualizeExecutionTime(time) {
+function visualizeInfo(info1, info2) {
   const svgGraph = document.querySelector('.info-visualization');
 
-  svgGraph.innerHTML = `<text x="1275" y="580" fill="grey" text-anchor="end">Executed in: ${time} ms</text>`;
+  svgGraph.innerHTML = `
+    <text x="1275" y="580" fill="grey" text-anchor="end">Executed in: ${info1.time} and ${info2.time} ms</text>
+    <text x="1275" y="600" fill="grey" text-anchor="end">Distance: ${info1.distance} and ${info2.distance}</text>`;
 }
 
+
+function visulalizeResults(info1, info2) {
+  const svgGraph = document.querySelector('.correct-path-visualization');
+  svgGraph.innerHTML = visualizePath(info1.path, 'rgba(255, 0, 0, 0.5)', 5) +
+   visualizePath(info2.path, 'rgba(0, 255, 0, 0.5)', 6);
+
+  const svgGraphSelector = document.querySelector('.correct-path-visualization-selector');
+  svgGraphSelector.innerHTML = `
+    <line x1="1215" y1="55" x2="1275" y2="55" stroke="rgba(255, 0, 0, 0.5)", stroke-width="10"/>
+    <line x1="1215" y1="90" x2="1275" y2="90" stroke="rgba(0, 255, 0, 0.5)", stroke-width="10"/>
+  `;
+
+  Array.from(svgGraphSelector.children).forEach((child, index) => {
+    console.log(child);
+    child.addEventListener('click', () => {
+      if (svgGraph.children[index].classList.contains('result-path-visible')) {
+        svgGraph.children[index].classList.remove('result-path-visible');
+      } else {
+        svgGraph.children[index].classList.add('result-path-visible');
+      }
+    });
+  });
+
+  svgGraphSelector.insertAdjacentHTML('afterbegin', `<text x="1275" y="20" fill="grey" text-anchor="end">Result paths:</text>`);
+}
 
 beginVisualization();
