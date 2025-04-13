@@ -1,0 +1,8 @@
+.correct-path-visualization {
+    visibility: hidden;
+}
+
+
+.result-path-visible {
+    visibility: visible;
+}

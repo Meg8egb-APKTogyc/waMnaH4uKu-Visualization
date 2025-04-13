@@ -285,11 +285,19 @@ int main() {
   }
 
   outFile.close();
+  
+  vector<int> populationBest = population[0];
+  cout << "[ ";
+  for (int i = 0; i < (int)populationBest.size() - 1; ++i) {
+      cout << populationBest[i] << ", ";
+  }
+  cout << populationBest[populationBest.size() - 1] << " ]\n";
 
   auto end = std::chrono::high_resolution_clock::now();
   auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-  cout << duration_ms.count() << endl;
+  cout << distanse(populationBest) << '\n';
+  cout << duration_ms.count() << '\n';
 
   return 0;
 }

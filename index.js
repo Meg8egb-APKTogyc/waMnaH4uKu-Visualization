@@ -10,8 +10,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 
-app.post('/run-cpp', express.json(), (req, res) => {
+app.post('/run-cpp-geneticAlgorithm', express.json(), (req, res) => {
   const cppProgramPath = path.join(__dirname, 'public', 'scripts', 'geneticAlgorithm');
+  const inputData = req.body.input;
+
+  const cppProcess = spawn(cppProgramPath);
+  
+  cppProcess.stdin.write(inputData);
+  cppProcess.stdin.end();
+
+  let result = '';
+  cppProcess.stdout.on('data', (data) => {
+    result += data.toString();
+  });
+
+  cppProcess.on('close', (code) => {
+    if (code === 0) {
+      res.send(result);
+    } else {
+      res.status(500).send("Ошибка выполнения программы");
+    }
+  });
+});
+
+app.post('/run-cpp-correct', express.json(), (req, res) => {
+  const cppProgramPath = path.join(__dirname, 'public', 'scripts', 'correct');
   const inputData = req.body.input;
 
   const cppProcess = spawn(cppProgramPath);

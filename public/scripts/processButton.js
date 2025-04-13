@@ -22,6 +22,8 @@ function processClearButton() {
 
   const svgGraph = document.querySelector('.path-visualization');
   svgGraph.innerHTML = '';
+  const svgGraphResult = document.querySelector('.correct-path-visualization');
+  svgGraphResult.innerHTML = '';
 
   epochIndex = 0;
   isStarted = 0;
@@ -38,7 +40,13 @@ async function processStartButton() {
 
   document.querySelector('.pauseButton').innerHTML = 'Pause';
   
-  await runCppProgram(generateResponse());
+  const [result1, result2] = await Promise.all([
+    runCppProgramCorrect(generateResponseCorrect()),
+    runCppProgram(generateResponse())
+  ]);
+
+  visulalizeResults(result1, result2);
+  visualizeInfo(result1, result2);
   
   stopFetching = fetchPopulationCyclically(interval);
 }
@@ -67,8 +75,14 @@ async function processVisualizeButton() {
   }
   
   processClearButton();
-  console.log(generateResponse());
-  await runCppProgram(generateResponse());
+
+  const [result1, result2] = await Promise.all([
+    runCppProgramCorrect(generateResponseCorrect()),
+    runCppProgram(generateResponse())
+  ]);
+
+  visulalizeResults(result1, result2);
+  visualizeInfo(result1, result2);
   visualizeTopPopulations();
   stopFetching = fetchPopulationCyclically(interval);
   isStarted = true;
