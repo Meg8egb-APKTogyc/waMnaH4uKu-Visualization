@@ -6,12 +6,16 @@
 #include <numeric>
 #include <algorithm>
 #include <cmath>
-
+#include <fstream>
+#include <chrono>
 
 using namespace std;
 
 
 mt19937 rnd(179);
+
+
+ofstream outFile("epochs.txt");
 
 
 struct POINT{
@@ -60,11 +64,23 @@ vector<int> createChild(const vector<int>& dad, const vector<int>& mom, int copy
   vector<int> ret(n, 0);
   
   for (int i = 0; i < copyGen; ++i) {
-    int left = randomVal(0, n);
-    int right = randomVal(left, min(n, left + randomVal(1, maxCopy)));
-    for (int j = left; j < right; ++j) {
-      ret[j] = dad[j];
-      gen[dad[j]] = 1;
+    int left = randomVal(1, n);
+    int right = randomVal(left, min(n + 1, left + randomVal(1, maxCopy)));
+
+    if (rnd() % 10 < 5) {
+      for (int j = 0; j < right - left; ++j) {
+        if (gen[dad[left + j]] || ret[left + j]) continue;
+
+        ret[left + j] = dad[left + j];
+        gen[dad[left + j]] = 1;
+      }
+    } else {
+      for (int j = 0; j < right - left; ++j) {
+        if (gen[dad[left + j]] || ret[right - j - 1]) continue;
+
+        ret[right - j - 1] = dad[left + j];
+        gen[dad[left + j]] = 1;
+      }
     }
   }
 
@@ -87,12 +103,22 @@ vector<int> createChild(const vector<int>& dad, const vector<int>& mom, int copy
 }
 
 
-void swapGenPart(vector<int>& individ, int i1, int i2, int length) {
-  int n = individ.size();
+void reverseGen(vector<int>& individ, int ind, int length) {
+  for (int i = 0; i < length / 2; ++i) {
+    swap(individ[ind + i], individ[i + length - 1 - i]);
+  }
+}
 
+
+void swapGenPart(vector<int>& individ, int i1, int i2, int length) {
   for (int i = 0; i < length; ++i) {
     swap(individ[i1 + i], individ[i2 + i]);
   }
+
+  if (rnd() % 100 < 20)
+    reverseGen(individ, i1, length);
+  if (rnd() % 100 < 20)
+    reverseGen(individ, i2, length);
 }
 
 
@@ -105,8 +131,13 @@ vector<int> mutate(vector<int> individual, int gens) {
     if (i1 == i2)
       continue;
     
-    int len = randomVal(0, min(min(min(n - i1, n - i2), abs(i1 - i2)), 3));
-    swapGenPart(individual, i1, i2, len);
+    int lenght = randomVal(0, min(min(min(n - i1, n - i2), abs(i1 - i2)), 3));
+    swapGenPart(individual, i1, i2, lenght);
+
+    if (rnd() % 100 < 20)
+      reverseGen(individual, i1, lenght);
+    if (rnd() % 100 < 20)
+      reverseGen(individual, i2, lenght);
   }
 
   return individual;
@@ -125,28 +156,6 @@ vector<int> mutateSimple(vector<int> individual, int gens) {
 }
 
 
-void mutation(vector<vector<int>>& population, int mutationCNT) {
-  int n = (int)population.size();
-  
-  for (int i = 0; i < mutationCNT; ++i) {
-    if (rnd() % 10 > 4)
-      population.push_back(mutate(population[randomVal(0, n)], randomVal(0, 4)));
-    else
-      population.push_back(mutateSimple(population[randomVal(0, n)], randomVal(1, 3)));
-  }
-}
-
-void crossBreeding(vector<vector<int>>& population, int pairsCNT) {
-  int n = population.size();
-
-  for (int i = 0; i < pairsCNT; ++i) {
-    population.push_back(createChild(population[randomVal(0, n)], population[randomVal(0, n)], randomVal(1, 3), 4));
-  }
-
-  return;  
-}
-
-
 long double distanse(const vector<int>& a) {
   long double dist = 0;
   int n = a.size();
@@ -154,7 +163,7 @@ long double distanse(const vector<int>& a) {
   for (int i = 1; i < n; ++i) {
     int diffX = points[a[i]].x - points[a[i - 1]].x;
     int diffY = points[a[i]].y - points[a[i - 1]].y;
-    dist += sqrt((long double)(diffX * diffX + diffY * diffY));
+    dist += sqrt((long double)((long long)diffX * diffX + (long long)diffY * diffY));
   }
 
   int diffX = points[a[0]].x - points[a[n - 1]].x;
@@ -173,34 +182,89 @@ bool compareByDistanse(const vector<int>& a, const vector<int>& b) {
 }
 
 
-void killNoobs(vector<vector<int>>& populataion, int populationCNT, int savePros) {
+int battleRoyal(const vector<vector<int>>& population) {
+  int n = population.size();
+  int goodParent = randomVal(0, n);
+
+  for (int i = 0; i < 5; ++i) {
+    int newParent = randomVal(0, n);
+    if (compareByDistanse(population[newParent], population[goodParent])) {
+      goodParent = newParent;
+    }
+  }
+
+  return goodParent;
+}
+
+void killNoobs(vector<vector<int>>& populataion, int populationCNT, int eliteCNT) {
   sort(populataion.begin(), populataion.end(), compareByDistanse);
   
   int n = populataion.size();
-  for (int i = savePros; i < populationCNT; ++i) {
+  for (int i = eliteCNT; i < populationCNT; ++i) {
     swap(populataion[i], populataion[randomVal(i, n)]);
   }
 
-  while (populationCNT < populataion.size()) {
-    populataion.pop_back();
+  if (populationCNT < (int)populataion.size()) {
+    populataion.erase(populataion.begin() + populationCNT, populataion.end());
   }
 }
 
+void mutation(vector<vector<int>>& population, int populationCNT, int mutationCNT, int eliteCNT) {
+  for (int i = 0; i < mutationCNT; ++i) {
+    int n = (int)population.size();  
+    if (rnd() % 10 < 4)
+      population.push_back(mutate(population[randomVal(0, n)], randomVal(0, 4)));
+    else
+      population.push_back(mutateSimple(population[randomVal(0, n)], randomVal(1, 3)));
 
-void printPro(vector<vector<int>>& population, int outputCNT) {
-  sort(population.begin(), population.end(), compareByDistanse);
-
-  for (int i = 0; i < outputCNT; ++i) {
-    for (int j = 0; j < population[i].size(); ++j) {
-      cout << population[i][j] << ' ';
+    if ((int)population.size() > 5 * populationCNT / 2) {
+      killNoobs(population, 3 * populationCNT / 2, eliteCNT);
     }
   }
 }
 
+void crossBreeding(vector<vector<int>>& population, int populationCNT, int childrenCNT, int eliteCNT) {
+  for (int i = 0; i < childrenCNT; ++i) {
+    int stepFather = battleRoyal(population);
+    int stepDaughter = battleRoyal(population);
+
+    population.push_back(createChild(population[stepFather], population[stepDaughter], randomVal(1, 3), 6));
+
+    if ((int)population.size() > 5 * populationCNT / 2) {
+      killNoobs(population, 3 * populationCNT / 2, eliteCNT);
+    }
+  }
+
+  return;  
+}
+
+void printPopulation(vector<vector<int>>& population, int outputCNT) {
+  sort(population.begin(), population.end(), compareByDistanse);
+  outFile << "[ ";
+  for (int i = 0; i < outputCNT; ++i) {
+    outFile << "[ ";
+    for (int j = 0; j < (int)population[i].size(); ++j) {
+      outFile << population[i][j];
+      if (j < (int)population[i].size() - 1)
+        outFile << ", ";
+    }
+    outFile << " ]";
+    if (i < outputCNT - 1) {
+      outFile << ", ";
+    }
+  }
+  outFile << " ]" << endl;
+}
+
 
 int main() {
+  auto start = std::chrono::high_resolution_clock::now();
+
   int pointsCNT, populationCNT, epochsCNT, outputCNT;
   cin >> pointsCNT >> populationCNT >> epochsCNT >> outputCNT;
+
+  int childrenCNT, mutationCNT, eliteCNT;
+  cin >> childrenCNT >> mutationCNT >> eliteCNT;
   
   for (int i = 0; i < pointsCNT; ++i) {
     int x, y;
@@ -211,16 +275,29 @@ int main() {
 
   vector<vector<int>> population = createPopulation(populationCNT, pointsCNT);
   for (int i = 0; i < epochsCNT; ++i) {
-    mutation(population, populationCNT);
+    crossBreeding(population, populationCNT, childrenCNT, eliteCNT);
 
-    killNoobs(population, 3 * populationCNT / 2, randomVal(2, 5));
+    mutation(population, populationCNT, mutationCNT, eliteCNT);
 
-    crossBreeding(population, populationCNT);
+    killNoobs(population, populationCNT, eliteCNT);
 
-    killNoobs(population, populationCNT, randomVal(2, 5));
-
-    printPro(population, outputCNT);
+    printPopulation(population, outputCNT);
   }
+
+  outFile.close();
+  
+  vector<int> populationBest = population[0];
+  cout << "[ ";
+  for (int i = 0; i < (int)populationBest.size() - 1; ++i) {
+      cout << populationBest[i] << ", ";
+  }
+  cout << populationBest[populationBest.size() - 1] << " ]\n";
+
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+  cout << distanse(populationBest) << '\n';
+  cout << duration_ms.count() << '\n';
 
   return 0;
 }

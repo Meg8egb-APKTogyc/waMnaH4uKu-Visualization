@@ -1,0 +1,5 @@
+node_modules
+/public/scripts/.vscode
+epochs.txt
+/public/scripts/epochs.txt
+/public/scripts/geneticAlgorithm
