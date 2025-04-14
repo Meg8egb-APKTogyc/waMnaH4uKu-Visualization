@@ -106,7 +106,7 @@ let stopFetching;
 
 let epochIndex;
 
-let mainEpoch;
+let printEpochs = new Set();
 
 const interval = 150;
 
@@ -129,6 +129,9 @@ async function beginVisualization() {
   visulalizeResults(result1, result2);
   visualizeInfo(result1, result2);
 
+  updatePrintEpochs();
+
+  console.log(printEpochs);
   isStarted = true;
   stopFetching = fetchPopulationCyclically(interval);
 }
@@ -203,16 +206,14 @@ function visualizeTopPopulations() {
   }
 
   Array.from(svgGraph.children).forEach((child, index) => {
-    child.addEventListener('mouseenter', () => {
-      mainEpoch = index;
-      if (isStarted) {
-        epochIndex = (epochIndex + config['epochs']['value'] - 1) % config['epochs']['value'];
-        fetchPopulation();
+    child.addEventListener('click', () => {
+      if (printEpochs.has(index)) {
+        printEpochs.delete(index);
+      } else {
+        printEpochs.add(index);
       }
-    });
-    
-    child.addEventListener('mouseleave', () => {
-      mainEpoch = -1;
+
+      console.log(printEpochs);
       if (isStarted) {
         epochIndex = (epochIndex + config['epochs']['value'] - 1) % config['epochs']['value'];
         fetchPopulation();
@@ -240,13 +241,10 @@ function visualizeEpoch(population) {
   const svgGraph = document.querySelector('.path-visualization');
   svgGraph.innerHTML = "";
 
-  if (mainEpoch === -1) {
-    for (let i = 0; i < population.length; ++i) {
-      svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[i], popularColors[i], 1.5 + (i === 0)));
-    }
-  } else {
-    svgGraph.insertAdjacentHTML('beforeend', visualizePath(population[mainEpoch], popularColors[mainEpoch], 2));
-  }
+  printEpochs = new Set([...printEpochs].sort((a, b) => a - b));
+  printEpochs.forEach((value) => {
+    svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[value], popularColors[value], 1.5 + (value === 0)));
+  })
 
   const info = document.querySelector('.info-visualization').querySelector('.changable');
   const epochIndexVisual = `<text x="1275" y="560" fill="grey" class="changable" text-anchor="end">Epoch: ${epochIndex + 1}</text>`;
@@ -292,6 +290,15 @@ function visulalizeResults(info1, info2) {
   });
 
   svgGraphSelector.insertAdjacentHTML('afterbegin', `<text x="1275" y="20" fill="grey" text-anchor="end">Result paths:</text>`);
+}
+
+
+function updatePrintEpochs() {
+  printEpochs.clear();
+
+  for (let i = 0; i < config['output']['value']; ++i) {
+    printEpochs.add(i);
+  }
 }
 
 beginVisualization();
