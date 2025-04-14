@@ -47,7 +47,7 @@ async function processStartButton() {
 
   visulalizeResults(result1, result2);
   visualizeInfo(result1, result2);
-  
+  updatePrintEpochs();
   stopFetching = fetchPopulationCyclically(interval);
 }
   
@@ -85,6 +85,8 @@ async function processVisualizeButton() {
   visualizeInfo(result1, result2);
   visualizeTopPopulations();
   stopFetching = fetchPopulationCyclically(interval);
+
+  updatePrintEpochs();
   isStarted = true;
   prevPoints = config['points']['value'];
 }
