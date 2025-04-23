@@ -8,6 +8,8 @@
 #include <cmath>
 #include <fstream>
 #include <chrono>
+#include <unordered_map>
+#include <functional>
 
 using namespace std;
 
@@ -16,6 +18,9 @@ mt19937 rnd(179);
 
 
 ofstream outFile("epochs.txt");
+
+
+unordered_map<string, long double> distanceCache;
 
 
 struct POINT{
@@ -157,6 +162,16 @@ vector<int> mutateSimple(vector<int> individual, int gens) {
 
 
 long double distanse(const vector<int>& a) {
+  string key;
+  for (int point : a) {
+      key += to_string(point) + ",";
+  }
+  
+  auto it = distanceCache.find(key);
+  if (it != distanceCache.end()) {
+      return it->second;
+  }
+
   long double dist = 0;
   int n = a.size();
   
@@ -298,6 +313,8 @@ int main() {
 
   cout << distanse(populationBest) << '\n';
   cout << duration_ms.count() << '\n';
+
+  distanceCache.clear();
 
   return 0;
 }
