@@ -54,7 +54,8 @@ function fetchPopulationCyclically(interval_ = 1000) {
         // console.log('Получены популяции:', populations);
         visualizeEpoch(populations);
 
-        timeoutID = setTimeout(fetchNextPopulation, interval_ + 4000 * (epochIndex + 1 === config.epochs.value));
+        const extraDelay = (epochIndex + 1 === config.epochs.value) ? 4000 : 0;
+        timeoutID = setTimeout(fetchNextPopulation, interval_ + extraDelay);
         epochIndex = (epochIndex + 1) % config.epochs.value;
       })
       .catch(error => {
@@ -101,8 +102,8 @@ function fetchPopulation() {
 
 let points;
 
-let isStarted;
-let stopFetching;
+let isStarted = false;
+let stopFetching = null;
 
 let epochIndex;
 
@@ -113,9 +114,8 @@ const interval = 150;
 
 async function beginVisualization() {
   points = generatePoints(config.points.value, 5, 5, 1000, 595);
-  console.log(generateResponse());
+  // console.log(generateResponse());
 
-  mainEpoch = -1;
   epochIndex = 0;
 
   visualizePoint();
@@ -126,7 +126,7 @@ async function beginVisualization() {
     runCppProgram(generateResponse())
   ]);
 
-  visulalizeResults(result1, result2);
+  visualizeResults(result1, result2);
   visualizeInfo(result1, result2);
 
   updatePrintEpochs();
@@ -186,14 +186,9 @@ function generateResponseCorrect() {
 
 function visualizePoint() {
   const svgGraph = document.querySelector('.points-visualization');
-
-  let newInner = "";
-  for (let i = 0; i < points.length; ++i) {
-    const point = points[i];
-    newInner += `<circle cx="${point.x}" cy="${point.y}" r="3" />`;
-  }
-
-  svgGraph.innerHTML = newInner;
+  svgGraph.innerHTML = points.map(point => 
+    `<circle cx="${point.x}" cy="${point.y}" r="3" />`
+  ).join('');
 }
 
 function visualizeTopPopulations() {
@@ -243,7 +238,9 @@ function visualizeEpoch(population) {
 
   printEpochs = new Set([...printEpochs].sort((a, b) => a - b));
   printEpochs.forEach((value) => {
-    svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[value], popularColors[value], 1.5 + (value === 0)));
+    if (population[value]) {
+      svgGraph.insertAdjacentHTML('afterbegin', visualizePath(population[value], popularColors[value], 1.5 + (value === 0)));
+    }
   })
 
   const info = document.querySelector('.info-visualization').querySelector('.changable');
@@ -267,7 +264,7 @@ function visualizeInfo(info1, info2) {
 }
 
 
-function visulalizeResults(info1, info2) {
+function visualizeResults(info1, info2) {
   const svgGraph = document.querySelector('.correct-path-visualization');
   svgGraph.innerHTML = visualizePath(info1.path, 'rgba(255, 0, 0, 0.5)', 5) +
    visualizePath(info2.path, 'rgba(0, 255, 0, 0.5)', 6);
@@ -278,14 +275,10 @@ function visulalizeResults(info1, info2) {
     <line x1="1215" y1="90" x2="1275" y2="90" stroke="rgba(0, 255, 0, 0.5)", stroke-width="10"/>
   `;
 
+  const paths = svgGraph.children; // Сохраняем ссылку
   Array.from(svgGraphSelector.children).forEach((child, index) => {
-    console.log(child);
     child.addEventListener('click', () => {
-      if (svgGraph.children[index].classList.contains('result-path-visible')) {
-        svgGraph.children[index].classList.remove('result-path-visible');
-      } else {
-        svgGraph.children[index].classList.add('result-path-visible');
-      }
+      paths[index].classList.toggle('result-path-visible');
     });
   });
 
@@ -302,3 +295,8 @@ function updatePrintEpochs() {
 }
 
 beginVisualization();
+
+
+window.addEventListener('unload', () => {
+  if (stopFetching) stopFetching();
+});
