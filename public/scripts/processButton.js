@@ -45,7 +45,7 @@ async function processStartButton() {
     runCppProgram(generateResponse())
   ]);
 
-  visulalizeResults(result1, result2);
+  visualizeResults(result1, result2);
   visualizeInfo(result1, result2);
   updatePrintEpochs();
   stopFetching = fetchPopulationCyclically(interval);
@@ -66,7 +66,7 @@ async function processVisualizeButton() {
   document.querySelectorAll('.input-modifiers').forEach((value) => {
     config[value.name.split('modifier-')[1]]['value'] = parseInt(value.value, 10);
   });
-  config['output']['max'] = Math.min(config['populations']['value'], config['populations']['max']);
+  config['output']['max'] = Math.min(config['populations']['value'], config['output']['max']);
 
   if (config['points']['value'] != prevPoints) {
     document.querySelector('.points-visualization').innerHTML = '';
@@ -81,7 +81,7 @@ async function processVisualizeButton() {
     runCppProgram(generateResponse())
   ]);
 
-  visulalizeResults(result1, result2);
+  visualizeResults(result1, result2);
   visualizeInfo(result1, result2);
   visualizeTopPopulations();
   stopFetching = fetchPopulationCyclically(interval);
@@ -92,7 +92,7 @@ async function processVisualizeButton() {
 }
 
 
-let prevPoints = config['points']['value'];
+let prevPoints = config?.points?.value || 0;
 
 const modifier = document.querySelector('.modifiers');
 for (let key in config) {
