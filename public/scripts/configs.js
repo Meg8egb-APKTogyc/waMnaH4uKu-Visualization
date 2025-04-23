@@ -8,13 +8,13 @@ const config = {
   populations: {
     value: 10,
     min: 1,
-    max: 1000,
+    max: 100,
     name: 'Populations',
   },
   epochs: {
     value: 50,
     min: 1,
-    max: 1000,
+    max: 100,
     name: 'Epochs',
   },
   output: {
@@ -26,19 +26,19 @@ const config = {
   children: {
     value: 10,
     min: 1,
-    max: 1000,
+    max: 100,
     name: 'Children per generation',
   }, 
   mutation: {
     value: 10,
     min: 1,
-    max: 1000,
+    max: 100,
     name: 'Mutation per generation',
   },
   elite: {
     value: 2,
     min: 1,
-    max: 1000,
+    max: 100,
     name: 'Elite individuals',
   }
 };
