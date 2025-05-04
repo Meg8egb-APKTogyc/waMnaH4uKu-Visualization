@@ -1,0 +1,36 @@
+.container{
+    width: 80vw;
+    height: 70vh;
+    background: rgb(237, 237, 237);
+}
+.right_menu{
+    position: absolute;
+    right: 5vw;
+    top:50vh;
+    display: flex;
+    justify-content: space-around;
+    flex-direction: column;
+    width: 100px;
+    height: 150px;
+}
+.right_menu div{
+    width: 80px;
+    height: 40px;
+    background-color: black;
+    color: white;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    font-family:'Times New Roman', Times, serif;
+    letter-spacing: 2px;
+    border-radius: 10% 20% 10% 20%;
+}
+.beatiful_line{
+    stroke:black;
+    stroke-width: 3;
+}
+.beatiful_circle{
+    fill: #FF6347;
+    r:5px;
+}
