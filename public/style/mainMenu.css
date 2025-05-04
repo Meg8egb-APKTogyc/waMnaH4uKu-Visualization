@@ -1,0 +1,50 @@
+.logo{
+    font-size: 120px;
+    font-family: 'Courier New', Courier, monospace;
+    color:rgba(78, 220, 255, 0.489);
+    animation: float 3s ease-in-out infinite;
+}
+body{
+    background-color: rgb(44, 39, 39);
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+.wrapper{
+    width: 100vw;
+    top:30vh;
+    display: flex;
+    position: absolute;
+    justify-content: center;
+}
+.container{
+    display: flex;
+    flex-direction: column;
+}
+.button{
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 24px;
+    color: rgba(78, 220, 255, 0.7);
+    border: 1px solid rgba(78, 220, 255, 0.5);
+    border-radius: 3px;
+    padding: 10px 30px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    width: 100px;
+    align-self: center;
+}
+
+.button:hover {
+    background: rgba(78, 220, 255, 0.1);
+    border-color: rgba(78, 220, 255, 0.8);
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}
