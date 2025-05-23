@@ -3,3 +3,5 @@ node_modules
 epochs.txt
 /public/scripts/epochs.txt
 /public/scripts/geneticAlgorithm
+/public/scripts/correct
+/.vscode
