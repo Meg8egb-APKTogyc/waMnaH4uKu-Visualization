@@ -38,6 +38,7 @@ async function runCppProgramCorrect(input) {
 
 function fetchPopulationCyclically(interval_ = 1000) {
   let timeoutID;
+  let isActive = true;
 
   function fetchNextPopulation() {
     fetch(`http://localhost:3000/api/epochs/${epochIndex}`)
@@ -68,13 +69,10 @@ function fetchPopulationCyclically(interval_ = 1000) {
 
   fetchNextPopulation();
 
-  function stopFetching_() {
-    if (timeoutID) {
-      clearTimeout(timeoutID);
-    }
-  }
-
-  return stopFetching_;
+  return () => {
+    isActive = false; // Деактивировать
+    if (timeoutID) clearTimeout(timeoutID);
+  };
 }
 
 function fetchPopulation() {
@@ -103,7 +101,7 @@ function fetchPopulation() {
 let points;
 
 let isStarted = false;
-let stopFetching = null;
+let stopFetching = null; 
 
 let epochIndex;
 
@@ -113,6 +111,7 @@ const interval = 150;
 
 
 async function beginVisualization() {
+  isStarted = false;
   points = generatePoints(config.points.value, 5, 5, 1000, 595);
   // console.log(generateResponse());
 
@@ -298,5 +297,8 @@ beginVisualization();
 
 
 window.addEventListener('unload', () => {
-  if (stopFetching) stopFetching();
+  if (stopFetching) {
+    stopFetching(); // Остановить предыдущий процесс
+    stopFetching = null; // Сбросить ссылку
+  }
 });

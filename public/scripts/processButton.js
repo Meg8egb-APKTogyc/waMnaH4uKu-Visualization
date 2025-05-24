@@ -1,24 +1,28 @@
 function processPauseButton() {
   const pauseButton = document.querySelector('.pauseButton');
+  if (!pauseButton) return;
 
   if (!isStarted) {
-    pauseButton.innerHTML = "Pause";
+    pauseButton.textContent = "Pause";
     return;
   }
   
-  console.log(pauseButton.innerHTML);
-  if (pauseButton.innerHTML === "Pause") {
-    stopFetching();
-    pauseButton.innerHTML = "Resume";
+  if (pauseButton.textContent === "Pause") {
+    if (stopFetching && typeof stopFetching === 'function') {
+      stopFetching();
+    }
+    pauseButton.textContent = "Resume";
   } else {
     stopFetching = fetchPopulationCyclically(interval);
-    pauseButton.innerHTML = "Pause";
+    pauseButton.textContent = "Pause";
   }
 }
   
   
 function processClearButton() {
-  stopFetching();
+  if (stopFetching && typeof stopFetching === 'function') {
+    stopFetching();
+  }
 
   const svgGraph = document.querySelector('.path-visualization');
   svgGraph.innerHTML = '';
@@ -26,19 +30,23 @@ function processClearButton() {
   svgGraphResult.innerHTML = '';
 
   epochIndex = 0;
-  isStarted = 0;
+  isStarted = false;
 
-  processPauseButton();
+  document.querySelector('.pauseButton').textContent = 'Pause';
 }
   
   
 async function processStartButton() {
-  stopFetching();
+  const startButton = document.querySelector('.startButton');
+  startButton.disabled = true;
+  if (stopFetching && typeof stopFetching === 'function') {
+    stopFetching();
+  }
 
   epochIndex = 0;
-  isStarted = 1;
+  isStarted = true;
 
-  document.querySelector('.pauseButton').innerHTML = 'Pause';
+  document.querySelector('.pauseButton').textContent = 'Pause';
   
   const [result1, result2] = await Promise.all([
     runCppProgramCorrect(generateResponseCorrect()),
@@ -49,6 +57,8 @@ async function processStartButton() {
   visualizeInfo(result1, result2);
   updatePrintEpochs();
   stopFetching = fetchPopulationCyclically(interval);
+
+  startButton.disabled = false;
 }
   
   
@@ -63,32 +73,47 @@ function processNewPointsButton() {
 
   
 async function processVisualizeButton() {
-  document.querySelectorAll('.input-modifiers').forEach((value) => {
-    config[value.name.split('modifier-')[1]]['value'] = parseInt(value.value, 10);
-  });
-  config['output']['max'] = Math.min(config['populations']['value'], config['output']['max']);
+  const visualizeButton = document.querySelector('.visualizeButton');
+  visualizeButton.disabled = true;
 
-  if (config['points']['value'] != prevPoints) {
-    document.querySelector('.points-visualization').innerHTML = '';
-    points = generatePoints(config['points']['value'], 5, 5, 995, 595);
-    visualizePoint();
+  if (stopFetching) {
+    stopFetching();
+    stopFetching = null;
   }
-  
-  processClearButton();
 
-  const [result1, result2] = await Promise.all([
-    runCppProgramCorrect(generateResponseCorrect()),
-    runCppProgram(generateResponse())
-  ]);
+  try {
+    document.querySelectorAll('.input-modifiers').forEach((value) => {
+      config[value.name.split('modifier-')[1]]['value'] = parseInt(value.value, 10);
+    });
+    config['output']['max'] = Math.min(config['populations']['value'], config['output']['max']);
 
-  visualizeResults(result1, result2);
-  visualizeInfo(result1, result2);
-  visualizeTopPopulations();
-  stopFetching = fetchPopulationCyclically(interval);
+    if (config['points']['value'] != prevPoints) {
+      document.querySelector('.points-visualization').textContent = '';
+      points = generatePoints(config['points']['value'], 5, 5, 995, 595);
+      visualizePoint();
+    }
+    
+    processClearButton();
 
-  updatePrintEpochs();
-  isStarted = true;
-  prevPoints = config['points']['value'];
+    const [result1, result2] = await Promise.all([
+      runCppProgramCorrect(generateResponseCorrect()),
+      runCppProgram(generateResponse())
+    ]);
+
+    visualizeResults(result1, result2);
+    visualizeInfo(result1, result2);
+    visualizeTopPopulations();
+    isStarted = true;
+    stopFetching = fetchPopulationCyclically(interval);
+
+    updatePrintEpochs();
+    prevPoints = config['points']['value'];
+  } catch (error) {
+    console.error('Ошибка:', error);
+    isStarted = false; 
+  } finally {
+    visualizeButton.disabled = false;
+  }
 }
 
 
